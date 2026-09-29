@@ -1,0 +1,4 @@
+php.lab.local {
+    tls internal
+    reverse_proxy web:80
+}

@@ -1,0 +1,25 @@
+# caddy/compose.yml — guárdalo como compose.yml en la carpeta caddy/
+# Requisito previo: docker network create proxy-net
+
+services:
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks:
+      - proxy-net
+
+volumes:
+  caddydata:
+  caddyconfig:
+
+networks:
+  proxy-net:
+    external: true

@@ -1,0 +1,84 @@
+# ─────────────────────────────────────────────────────────────
+#  Stack: PHP 8.5 + Apache (mod_php) + MySQL 8.4
+#  Uso: docker compose up -d
+# ─────────────────────────────────────────────────────────────
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mi-app-php:8.5-apache
+    container_name: php85-apache
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Tu código PHP va en ./src (punto de entrada: src/index.php)
+      - ./src:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: appdb
+      DB_USER: appuser
+      DB_PASS: ${DB_PASSWORD:-cambia_esto_en_.env}
+      TZ: Europe/Madrid
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - appnet
+      - proxy-net
+
+  db:
+    image: mysql:8.4
+    container_name: mysql84
+    restart: unless-stopped
+    ports:
+      # Comenta esta línea si no quieres exponer la BD al host
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: ${DB_PASSWORD:-cambia_esto_en_.env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_cambia_esto}
+      TZ: Europe/Madrid
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - appnet
+      - proxy-net
+
+  # ── Opcional: phpMyAdmin para administrar la BD por web ──
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: unless-stopped
+    profiles: ["admin"]   # se levanta con: docker compose --profile admin up -d
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      TZ: Europe/Madrid
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - appnet
+      - proxy-net
+
+volumes:
+  dbdata:
+
+networks:
+  appnet:
+    driver: bridge
+  proxy-net:
+    external: true

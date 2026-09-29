@@ -1,18 +1,38 @@
-# caddy/compose.yml — guárdalo como compose.yml en la carpeta caddy/
-# Requisito previo: docker network create proxy-net
+# ─────────────────────────────────────────────────────────────
+#  Reverse proxy Caddy
+#
+#  Uso:  docker compose up -d
+#
+#  Único punto de entrada del laboratorio. Todo el tráfico
+#  externo entra por 80/443; el resto de servicios no publican
+#  puertos en el host.
+#
+#  Requisito previo:  docker network create proxy-net
+# ─────────────────────────────────────────────────────────────
 
 services:
   caddy:
-    image: caddy:latest
-    container_name: caddy
+    # Versión fijada a la serie 2.10: 'latest' cambiaría de
+    # comportamiento sin avisar entre despliegues.
+    image: caddy:2.10-alpine
     restart: unless-stopped
+
+    # env_file en lugar de 'environment' con interpolación: los
+    # hashes bcrypt contienen '$', que Compose expandiría y
+    # corrompería. env_file copia el valor tal cual.
+    env_file:
+      - .env
+
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"   # HTTP/3
+
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddydata:/data
+      - caddydata:/data       # certificados y CA
       - caddyconfig:/config
+
     networks:
       - proxy-net
 

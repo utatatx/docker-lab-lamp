@@ -1,4 +1,86 @@
-php.lab.local {
-    tls internal
-    reverse_proxy web:80
+# ─────────────────────────────────────────────────────────────
+#  Caddyfile — reverse proxy con TLS
+#
+#  Todo el comportamiento se controla por variables de entorno
+#  definidas en caddy/.env (ver .env.example).
+#
+#  Opciones globales:
+#    admin localhost:2019  ->  la API de administración queda
+#      atada al loopback del contenedor. Por defecto Caddy la
+#      expone en la red, lo que permite a cualquiera conectado a
+#      proxy-net reconfigurar el proxy.
+# ─────────────────────────────────────────────────────────────
+{
+	admin localhost:2019
+	email {$ACME_EMAIL:admin@example.com}
+}
+
+# ── Aplicación ──────────────────────────────────────────────
+#
+# TLS_MODE admite dos clases de valor:
+#   internal         ->  CA propia de Caddy, autofirmada. Es lo
+#                        suitable para el laboratorio: el
+#                        navegador avisará hasta que instales la
+#                        CA en el cliente.
+#   <correo@dominio> ->  Let's Encrypt / ACME. Exige un dominio
+#                        real apuntando a este servidor y 80/443
+#                        accesibles desde Internet.
+#
+# El parser de Caddy solo admite 'internal', 'force_automate' o
+# una dirección de correo como argumento de 'tls', por eso el
+# valor no puede ser una palabra como 'acme'.
+{$DOMAIN:php.lab.local} {
+	encode zstd gzip
+
+	tls {$TLS_MODE:internal}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy web:80
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# ── phpMyAdmin ──────────────────────────────────────────────
+#
+# Hostname aparte en lugar de una ruta tipo /phpmyadmin: la
+# herramienta genera enlaces absolutos, que se romperían bajo un
+# subpath salvo que se definiera PMA_ABSOLUTE_URI.
+#
+# Protegido con autenticación básica. PM_USER y PM_HASH llegan
+# desde .env mediante env_file (que no interpola variables, para
+# no corromper los '$' del hash bcrypt). Si PM_HASH no está
+# definida, Caddy no arranca.
+{$PMA_DOMAIN:phpmyadmin.lab.local} {
+	encode zstd gzip
+
+	tls {$TLS_MODE:internal}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	basic_auth {
+		{$PM_USER:admin} {$PM_HASH}
+	}
+
+	reverse_proxy phpmyadmin:80
+
+	log {
+		output stdout
+		format json
+	}
 }

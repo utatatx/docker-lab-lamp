@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────
+#  El contexto de build se envía completo al daemon de Docker.
+#  Sin esto, el .env con contraseñas acabaría en una capa de la
+#  imagen y sería legible con `docker history` o `docker save`.
+# ─────────────────────────────────────────────────────────────
+
+# Secretos: nunca deben entrar en la imagen
+.env
+.env.*
+!.env.example
+
+# Documentación
+*.md
+README.md
+
+# Configuración de phpMyAdmin: se monta en tiempo de ejecución,
+# no forma parte de la imagen de la aplicación
+phpmyadmin/
+
+# Sistema de control de versiones
+.git
+.gitignore
+.gitattributes
+
+# Certificados y claves
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Datos y respaldos
+backups/
+dumps/
+*.sql
+*.sql.gz
+*.dump
+
+# Logs y restos del sistema
+*.log
+logs/
+.DS_Store
+Thumbs.db

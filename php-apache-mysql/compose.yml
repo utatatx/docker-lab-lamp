@@ -1,28 +1,41 @@
 # ─────────────────────────────────────────────────────────────
 #  Stack: PHP 8.5 + Apache (mod_php) + MySQL 8.4
-#  Uso: docker compose up -d
+#
+#  Uso:  docker compose up -d
+#
+#  Las credenciales NO tienen valor por defecto a propósito:
+#  ${VAR:?mensaje} aborta el arranque si la variable no está
+#  definida, en lugar de levantar MySQL con una contraseña
+#  conocida publicada en el repositorio.
 # ─────────────────────────────────────────────────────────────
 
 services:
+
+  # ── Aplicación web ─────────────────────────────────────────
   web:
     build:
       context: .
       dockerfile: Dockerfile
     image: mi-app-php:8.5-apache
-    container_name: php85-apache
     restart: unless-stopped
     ports:
-      - "8080:80"
+      # Solo loopback: se puede depurar con curl en local, pero
+      # la aplicación no queda expuesta a la red local ni salta
+      # al cifrado de Caddy. El acceso público entra por 443.
+      - "127.0.0.1:8080:80"
     volumes:
-      # Tu código PHP va en ./src (punto de entrada: src/index.php)
-      - ./src:/var/www/html
+      # El código PHP se monta desde el host (entorno de laboratorio).
+      - ./src:/var/www/html:ro
     environment:
       DB_HOST: db
       DB_PORT: "3306"
-      DB_NAME: appdb
-      DB_USER: appuser
-      DB_PASS: ${DB_PASSWORD:-cambia_esto_en_.env}
-      TZ: Europe/Madrid
+      DB_NAME: ${DB_NAME:?define DB_NAME en .env}
+      DB_USER: ${DB_USER:?define DB_USER en .env}
+      DB_PASS: ${DB_PASSWORD:?define DB_PASSWORD en .env (ver .env.example)}
+      TZ: ${TZ:-Europe/Madrid}
+      # Mantener en 0 fuera de local: phpinfo() imprime las
+      # variables de entorno, incluidas las contraseñas.
+      PHPINFO: ${PHPINFO:-0}
     depends_on:
       db:
         condition: service_healthy
@@ -30,19 +43,18 @@ services:
       - appnet
       - proxy-net
 
+  # ── Base de datos ──────────────────────────────────────────
   db:
     image: mysql:8.4
-    container_name: mysql84
     restart: unless-stopped
-    ports:
-      # Comenta esta línea si no quieres exponer la BD al host
-      - "3306:3306"
+    # Sin sección 'ports': MySQL no se publica nunca en el host.
+    # Solo es accesible desde la red interna 'appnet'.
     environment:
-      MYSQL_DATABASE: appdb
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: ${DB_PASSWORD:-cambia_esto_en_.env}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_cambia_esto}
-      TZ: Europe/Madrid
+      MYSQL_DATABASE: ${DB_NAME:?define DB_NAME en .env}
+      MYSQL_USER: ${DB_USER:?define DB_USER en .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?define DB_PASSWORD en .env (ver .env.example)}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?define DB_ROOT_PASSWORD en .env (ver .env.example)}
+      TZ: ${TZ:-Europe/Madrid}
     volumes:
       - dbdata:/var/lib/mysql
     healthcheck:
@@ -52,21 +64,29 @@ services:
       retries: 10
       start_period: 30s
     networks:
+      # Únicamente appnet. Estar también en proxy-net haría la
+      # base de datos alcanzable desde cualquier otro proyecto
+      # que use la red compartida del reverse proxy.
       - appnet
-      - proxy-net
 
-  # ── Opcional: phpMyAdmin para administrar la BD por web ──
+  # ── Opcional: phpMyAdmin tras el proxy ─────────────────────
+  # No publica puertos: se accede por Caddy con autenticación
+  # básica. Se levanta con: docker compose --profile admin up -d
   phpmyadmin:
-    image: phpmyadmin:latest
-    container_name: phpmyadmin
+    image: phpmyadmin:5
     restart: unless-stopped
-    profiles: ["admin"]   # se levanta con: docker compose --profile admin up -d
-    ports:
-      - "8081:80"
+    profiles: ["admin"]
+    volumes:
+      # Declara 'db' como host de confianza para que phpMyAdmin no
+      # avise de que la conexión no usa SSL. Solo silencia el aviso.
+      - ./phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php:ro
     environment:
       PMA_HOST: db
-      PMA_PORT: 3306
-      TZ: Europe/Madrid
+      PMA_PORT: "3306"
+      TZ: ${TZ:-Europe/Madrid}
+      # Impide el "servidor arbitrario" de phpMyAdmin, que
+      # permitiría apuntar la herramienta a otros hosts.
+      PMA_ARBITRARY: "0"
     depends_on:
       db:
         condition: service_healthy
@@ -78,7 +98,12 @@ volumes:
   dbdata:
 
 networks:
+  # appnet: red interna y aislada. 'internal: true' impide que
+  # los contenedores que solo viven aquí salgan a Internet.
   appnet:
     driver: bridge
+    internal: true
+  # proxy-net: la comparten todos los proyectos detrás de Caddy.
+  # La crea el operador (docker network create proxy-net).
   proxy-net:
     external: true

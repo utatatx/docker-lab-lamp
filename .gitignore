@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────
+#  Secretos: NUNCA deben subirse al repositorio
+# ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# Claves privadas, certificados y material criptográfico
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+root.crt
+ca.crt
+
+# Material PKI de Caddy exportado a mano desde el contenedor
+caddy/pki/
+certificates/
+
+# Certificados propios de MySQL con CA (ver README: "Con una CA propia sí funciona")
+# Se ignora el directorio entero: las claves privadas no deben depender de la extensión
+certs/
+
+# ─────────────────────────────────────────────────────────────
+#  Datos y respaldos
+# ─────────────────────────────────────────────────────────────
+backups/
+dumps/
+*.sql
+*.sql.gz
+*.dump
+
+# Logs
+*.log
+logs/
+
+# ─────────────────────────────────────────────────────────────
+#  Sistema operativo
+# ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─────────────────────────────────────────────────────────────
+#  Editores
+# ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─────────────────────────────────────────────────────────────
+#  Docker
+# ─────────────────────────────────────────────────────────────
+docker-compose.override.yml

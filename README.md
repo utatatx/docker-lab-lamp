@@ -41,19 +41,17 @@ docker/
 │   ├── compose.yml        # Reverse proxy + TLS
 │   └── Caddyfile          # php.lab.local { tls internal; reverse_proxy web:80 }
 ├── php-apache-mysql/
-│   ├── compose.yml        # Servicios web + db (+ phpmyadmin opcional)
-│   ├── Dockerfile         # php:8.5-apache + extensiones MySQL + ini custom
-│   ├── src/
-│   │   └── index.php      # Código de la aplicación (montado como volumen)
-│   └── .env.example       # Plantilla de variables de entorno
-└── pi-hole/               # (pendiente) DNS local para el laboratorio
+    ├── compose.yml        # Servicios web + db (+ phpmyadmin opcional)
+    ├── Dockerfile         # php:8.5-apache + extensiones MySQL + ini custom
+    ├── src/
+    │   └── index.php      # Código de la aplicación (montado como volumen)
+    └── .env.example       # Plantilla de variables de entorno
 ```
 
 ## ✅ Requisitos
 
 - Docker Engine + Docker Compose v2
 - Puertos 80 y 443 libres en el host
-- (Opcional) Pi-hole como DNS de la red local
 
 ## 🚀 Puesta en marcha
 
@@ -64,8 +62,8 @@ docker/
 docker network create proxy-net
 
 # 2. Clonar el repositorio
-git clone https://github.com/<usuario>/<repo>.git
-cd <repo>
+git clone https://github.com/utatatx/docker-lab-lamp.git
+cd docker-lab-lamp
 
 # 3. Variables de entorno (credenciales de la BD)
 cd php-apache-mysql
